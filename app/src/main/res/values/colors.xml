@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="button_start_color">#00FF00</color>  <!-- Verde para Start -->
+    <color name="button_pause_color">#FFFF00</color>  <!-- Amarelo para Pause -->
+    <color name="button_finish_color">#FF0000</color> <!-- Vermelho para Finish -->
+    <color name="black_text_color">#000000</color>    <!-- Preto para o texto -->
+</resources>
+
+

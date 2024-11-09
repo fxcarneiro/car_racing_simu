@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="startButton" type="id" />
+    <item name="pauseButton" type="id" />
+    <item name="finishButton" type="id" />
+    <item name="qtdEditText" type="id" />
+    <item name="qtdTextView" type="id" />
+    <item name="pistaImageView" type="id" />
+</resources>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="16dp"
+    android:background="@android:color/black">
+
+    <!-- Pista e carros serão desenhados aqui -->
+    <LinearLayout
+        android:id="@+id/trackContainer"
+        android:layout_width="400dp"
+        android:layout_height="400dp"
+        android:layout_gravity="center"
+        android:background="@android:color/black"
+        android:orientation="horizontal" />
+
+    <!-- Campo de Texto para Qtd de Carros -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="16dp"
+        android:background="@android:color/white"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Qtd de carros:"
+            android:textSize="18sp"
+            android:textColor="@android:color/black" />
+
+        <EditText
+            android:id="@+id/carCountEditText"
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:ems="3"
+            android:text="1"
+            android:gravity="center"
+            android:textColor="@android:color/black"
+            android:layout_marginLeft="8dp" />
+    </LinearLayout>
+
+    <!-- Botões de Controle -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_marginTop="16dp">
+
+        <!-- Botão Start -->
+        <Button
+            android:id="@+id/startButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Start"
+            android:backgroundTint="@color/button_start_color"
+            android:textColor="@color/black_text_color"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Botão Pause -->
+        <Button
+            android:id="@+id/pauseButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pause"
+            android:backgroundTint="@color/button_pause_color"
+            android:textColor="@color/black_text_color"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Botão Finish -->
+        <Button
+            android:id="@+id/finishButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Finish"
+            android:backgroundTint="@color/button_finish_color"
+            android:textColor="@color/black_text_color" />
+    </LinearLayout>
+
+</LinearLayout>
