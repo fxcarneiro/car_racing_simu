@@ -34,6 +34,7 @@ android {
 
 dependencies {
     // Android UI and Support libraries
+    implementation(project(":mylibrary"))
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)

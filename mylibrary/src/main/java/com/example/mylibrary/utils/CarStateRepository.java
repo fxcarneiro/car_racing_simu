@@ -1,11 +1,9 @@
-// Caminho do arquivo: com/example/myapplication/utils/CarStateRepository.java
+// Caminho do arquivo: com/example/mylibrary/utils/CarStateRepository.java
 
-package com.example.myapplication.utils;
+package com.example.mylibrary.utils;
 
 import android.util.Log;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.example.myapplication.models.Car;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,7 +19,7 @@ public class CarStateRepository {
     }
 
     // Método para salvar o estado de um carro
-    public void saveCarState(Car car) {
+    public void saveCarState(CarState car) {
         Map<String, Object> carState = new HashMap<>();
         carState.put("x", car.getX());
         carState.put("y", car.getY());
@@ -39,7 +37,7 @@ public class CarStateRepository {
     }
 
     // Método para restaurar o estado de um carro a partir do banco de dados
-    public void loadCarState(Car car, OnCarStateLoadedListener listener) {
+    public void loadCarState(CarState car, OnCarStateLoadedListener listener) {
         firestore.collection(COLLECTION_NAME).document(car.getName())
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
@@ -69,6 +67,6 @@ public class CarStateRepository {
 
     // Listener para notificar quando o estado de um carro é carregado
     public interface OnCarStateLoadedListener {
-        void onCarStateLoaded(Car car);
+        void onCarStateLoaded(CarState car);
     }
 }

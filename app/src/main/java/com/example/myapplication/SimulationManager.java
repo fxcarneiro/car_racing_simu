@@ -6,7 +6,8 @@ import android.util.Log;
 import com.example.myapplication.interfaces.Vehicle;
 import com.example.myapplication.models.Car;
 import com.example.myapplication.models.SafetyCar;
-import com.example.myapplication.utils.CarStateRepository;
+import com.example.mylibrary.utils.CarStateRepository;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,16 +71,16 @@ public class SimulationManager {
             int carColor = carColors[i % carColors.length];
             Car car = new Car("Car" + (i + 1), startX, startY, carColor, cars);
             carStateRepository.loadCarState(car, loadedCar -> {
-                if (loadedCar != null) {
-                    vehicles.add(loadedCar);
-                    cars.add(loadedCar);
+                if (loadedCar instanceof Car) { // Verifica se loadedCar é uma instância de Car
+                    vehicles.add((Car) loadedCar); // Adiciona o carro à lista de veículos
+                    cars.add((Car) loadedCar); // Adiciona o carro à lista de carros
                 } else {
                     vehicles.add(car);
                     cars.add(car);
                 }
                 loadedCars.add(car);
 
-                // Quando todos os carros estiverem carregados, inclua o Safety Car e atualize o TrackView
+                // Quando todos os carros estiverem carregados, inclui o Safety Car e atualiza o TrackView
                 if (loadedCars.size() == vehicleCount) {
                     initializeSafetyCar();
                     trackView.updateCars(cars.toArray(new Car[0]));
@@ -92,6 +93,8 @@ public class SimulationManager {
             });
         }
     }
+
+
 
     private void initializeSafetyCar() {
         try {

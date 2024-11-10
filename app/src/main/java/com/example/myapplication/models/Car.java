@@ -9,14 +9,15 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.Log;
 import com.example.myapplication.interfaces.Vehicle;
-import com.example.myapplication.utils.CalculationUtils;
+import com.example.mylibrary.utils.CalculationUtils;
+import com.example.mylibrary.utils.CarState;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
 
-public class Car implements Vehicle, Runnable {
+public class Car implements Vehicle, Runnable, CarState {
     private final String name;
     private float x, y;
     private double direction;
@@ -69,25 +70,94 @@ public class Car implements Vehicle, Runnable {
         this.otherCars = otherCars;
     }
 
-    public void resetFuel() {
-        this.fuelTank = initialFuel;
+    // Implementação dos métodos de CarState
+    @Override
+    public String getName() {
+        return name;
     }
 
+    @Override
+    public float getX() {
+        return x;
+    }
+
+    @Override
+    public float getY() {
+        return y;
+    }
+
+    @Override
+    public double getDirection() {
+        return direction;
+    }
+
+    @Override
+    public float getSpeed() {
+        return speed;
+    }
+
+    @Override
+    public int getFuelTank() {
+        return fuelTank;
+    }
+
+    @Override
+    public int getDistance() {
+        return distance;
+    }
+
+    @Override
+    public int getPenalty() {
+        return penalty;
+    }
+
+    @Override
+    public int getLapsCompleted() {
+        return lapsCompleted;
+    }
+
+    @Override
     public void setPosition(float x, float y) {
         this.x = x;
         this.y = y;
     }
 
+    @Override
     public void setDirection(double direction) {
         this.direction = direction;
     }
 
-    public void setRunning(boolean running) {
-        this.isRunning = running;
-    }
-
+    @Override
     public void setSpeed(float speed) {
         this.speed = speed;
+    }
+
+    @Override
+    public void setFuelTank(int fuelTank) {
+        this.fuelTank = fuelTank;
+    }
+
+    @Override
+    public void setDistance(int distance) {
+        this.distance = distance;
+    }
+
+    @Override
+    public void setPenalty(int penalty) {
+        this.penalty = penalty;
+    }
+
+    @Override
+    public void setLapsCompleted(int lapsCompleted) {
+        this.lapsCompleted = lapsCompleted;
+    }
+
+    public void resetFuel() {
+        this.fuelTank = initialFuel;
+    }
+
+    public void setRunning(boolean running) {
+        this.isRunning = running;
     }
 
     @Override
@@ -407,42 +477,7 @@ public class Car implements Vehicle, Runnable {
         this.accumulatedMoveX = 0;
     }
 
-    public double getDirection() {
-        return direction;
-    }
-
-    public float getSpeed() {
-        return speed;
-    }
-
-    public int getFuelTank() {
-        return fuelTank;
-    }
-    public void setFuelTank(int fuelTank) {
-        this.fuelTank = fuelTank;
-    }
-
-    public void setDistance(int distance) {
-        this.distance = distance;
-    }
-
-    public void setPenalty(int penalty) {
-        this.penalty = penalty;
-    }
-
-    public void setLapsCompleted(int lapsCompleted) {
-        this.lapsCompleted = lapsCompleted;
-    }
-
-
-
     public void resetAccumulatedMoveY() {
         this.accumulatedMoveY = 0;
     }
-    public float getX() { return x; }
-    public float getY() { return y; }
-    public String getName() { return name; }
-    public int getDistance() { return distance; }
-    public int getPenalty() { return penalty; }
-    public int getLapsCompleted() { return lapsCompleted; }
 }
