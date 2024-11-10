@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.library)
+    id("maven-publish")
 }
 
 android {
@@ -25,6 +26,27 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
+    }
+}
+publishing {
+    publications {
+        create<MavenPublication>("bar") {
+            groupId = "com.example"
+            artifactId = "mylibrary"
+            version = "1.0.0"
+            // Especifica o arquivo AAR como o artefato para publicação
+            artifact("$buildDir/outputs/aar/mylibrary-release.aar")
+        }
+    }
+    repositories{
+        maven {
+            name = "GithubPackages"
+            url = uri("https://maven.pkg.github.com/fxcarneiro/car_racing_simu")
+            credentials {
+                username = System.getenv("GITHUB_USERNAME")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
     }
 }
 

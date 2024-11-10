@@ -33,8 +33,7 @@ android {
 }
 
 dependencies {
-    // Android UI and Support libraries
-    implementation(project(":mylibrary"))
+    implementation("com.example:mylibrary:1.0.0")
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
@@ -42,12 +41,9 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
 
-    // Unit Testing libraries
     testImplementation(libs.junit)
-    testImplementation("org.mockito:mockito-core:4.0.0") // Adiciona Mockito para testes unitários
-
-    // Android Instrumented Testing libraries
+    testImplementation("org.mockito:mockito-core:4.0.0")
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-    androidTestImplementation("org.mockito:mockito-android:4.0.0") // Adiciona Mockito para testes instrumentados
+    androidTestImplementation("org.mockito:mockito-android:4.0.0")
 }
