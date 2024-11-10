@@ -1,6 +1,6 @@
 // Caminho do arquivo: com/example/myapplication/utils/CalculationUtils.java
 
-package com.example.myapplication.utils;
+package com.example.mylibrary;
 
 public class CalculationUtils {
 

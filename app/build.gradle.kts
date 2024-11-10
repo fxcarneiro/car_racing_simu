@@ -40,6 +40,7 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation("com.google.firebase:firebase-firestore")
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation(project(":mylibrary"))
 
     // Unit Testing libraries
     testImplementation(libs.junit)

@@ -51,7 +51,7 @@ publishing {
 }
 
 dependencies {
-
+    implementation("com.example:mylibrary:1.0")
     implementation(libs.appcompat)
     implementation(libs.material)
     testImplementation(libs.junit)

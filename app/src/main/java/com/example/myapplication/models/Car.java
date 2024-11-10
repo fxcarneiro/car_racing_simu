@@ -9,7 +9,7 @@ import android.graphics.Paint;
 import android.graphics.RectF;
 import android.util.Log;
 import com.example.myapplication.interfaces.Vehicle;
-import com.example.myapplication.utils.CalculationUtils;
+import com.example.mylibrary.CalculationUtils;
 
 import java.util.HashMap;
 import java.util.List;
