@@ -33,7 +33,7 @@ publishing {
         create<MavenPublication>("bar") {
             groupId = "com.example"
             artifactId = "mylibrary"
-            version = "1.0"
+            version = "1.0.1"
             // Especifica o arquivo AAR como o artefato para publicação
             artifact("$buildDir/outputs/aar/mylibrary-release.aar")
         }
