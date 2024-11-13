@@ -16,6 +16,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
+/**
+ * ### 3.2. Car
+ * - **Descrição**: Implementa a interface `Vehicle` e representa um carro com propriedades e
+ *   comportamentos específicos para a simulação, como posição, direção, velocidade, e combustível.
+ *   Esta classe gerencia seu movimento e resposta a colisões e implementa `Runnable`, o que permite
+ *   sua execução em uma thread.
+ * - **Funcionalidades**:
+ *   - Movimenta-se ponto a ponto e atualiza a variável `distance`.
+ *   - Controla colisões e incrementa a penalidade (`penalty`) em colisões.
+ *   - Usa um semáforo para gerenciar regiões críticas na pista.
+ */
 
 public class Car implements Vehicle, Runnable, CarState {
     private final String name;
@@ -51,6 +62,7 @@ public class Car implements Vehicle, Runnable, CarState {
     private static final float CRITICAL_REGION_X_END = 173;
     private static final float CRITICAL_REGION_Y_START = 467;
     private static final float CRITICAL_REGION_Y_END = 493;
+
 
     public Car(String name, float startX, float startY, int carColor, List<Car> otherCars) {
         this.name = name;

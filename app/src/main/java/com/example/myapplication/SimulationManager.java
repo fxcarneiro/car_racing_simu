@@ -1,3 +1,5 @@
+// Caminho do arquivo: com/example/myapplication/SimulationManager.java
+
 package com.example.myapplication;
 
 import android.content.Context;
@@ -8,25 +10,33 @@ import com.example.myapplication.models.Car;
 import com.example.myapplication.models.SafetyCar;
 import com.example.mylibrary.utils.CarStateRepository;
 
-
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Classe SimulationManager gerencia a simulação de corrida, incluindo a criação de veículos,
+ * controle de estado (início, pausa, retomada e finalização) e monitoramento de colisões.
+ * Responsável por coordenar o movimento dos carros, incluindo o SafetyCar, e por manter
+ * o estado da simulação centralizado.
+ */
 public class SimulationManager {
 
-    private List<Vehicle> vehicles;
-    private List<Car> cars;
-    private TrackView trackView;
-    private SafetyCar safetyCar;
-    private boolean isRunning;
-    private boolean isPaused;
-    private boolean isFinished;
-    private final float startX = 75;
-    private final float startY = 400;
-    private final int[] carColors = {Color.BLUE, Color.RED, Color.GREEN, Color.MAGENTA};
+    private List<Vehicle> vehicles;              // Lista de todos os veículos na simulação
+    private List<Car> cars;                      // Lista específica de carros (exclui SafetyCar)
+    private TrackView trackView;                 // Exibição da pista
+    private SafetyCar safetyCar;                 // Instância do carro de segurança
+    private boolean isRunning;                   // Flag de estado: se a simulação está em execução
+    private boolean isPaused;                    // Flag de estado: se a simulação está pausada
+    private boolean isFinished;                  // Flag de estado: se a simulação foi finalizada
+    private final float startX = 75;             // Coordenada inicial X para veículos
+    private final float startY = 400;            // Coordenada inicial Y para veículos
+    private final int[] carColors = {Color.BLUE, Color.RED, Color.GREEN, Color.MAGENTA};  // Cores dos carros
     private static final String TAG = "SimulationManager";
-    private final CarStateRepository carStateRepository = new CarStateRepository();
+    private final CarStateRepository carStateRepository = new CarStateRepository();  // Repositório de estado dos carros
 
+    /**
+     * Construtor que inicializa a simulação e configura o estado inicial.
+     */
     public SimulationManager(Context context) {
         try {
             vehicles = new ArrayList<>();
@@ -39,12 +49,18 @@ public class SimulationManager {
         }
     }
 
+    /**
+     * Reinicia o estado da simulação para os valores iniciais.
+     */
     private void resetSimulationState() {
         isPaused = false;
         isFinished = false;
         isRunning = false;
     }
 
+    /**
+     * Inicia a simulação com um número especificado de veículos.
+     */
     public void startSimulation(int vehicleCount) {
         try {
             if (vehicleCount <= 0) {
@@ -61,26 +77,30 @@ public class SimulationManager {
         }
     }
 
+    /**
+     * Carrega os estados dos carros salvos e inicializa o número especificado de carros.
+     */
     private void loadCarStatesAndInitialize(int vehicleCount) {
         vehicles.clear();
         cars.clear();
 
         List<Car> loadedCars = new ArrayList<>();
 
+        // Cria e carrega o estado de cada carro
         for (int i = 0; i < vehicleCount; i++) {
             int carColor = carColors[i % carColors.length];
             Car car = new Car("Car" + (i + 1), startX, startY, carColor, cars);
             carStateRepository.loadCarState(car, loadedCar -> {
-                if (loadedCar instanceof Car) { // Verifica se loadedCar é uma instância de Car
-                    vehicles.add((Car) loadedCar); // Adiciona o carro à lista de veículos
-                    cars.add((Car) loadedCar); // Adiciona o carro à lista de carros
+                if (loadedCar instanceof Car) { // Verifica se o estado carregado é uma instância de Car
+                    vehicles.add((Car) loadedCar); // Adiciona à lista de veículos e carros
+                    cars.add((Car) loadedCar);
                 } else {
                     vehicles.add(car);
                     cars.add(car);
                 }
                 loadedCars.add(car);
 
-                // Quando todos os carros estiverem carregados, inclui o Safety Car e atualiza o TrackView
+                // Quando todos os carros estiverem carregados, inicializa o SafetyCar e o TrackView
                 if (loadedCars.size() == vehicleCount) {
                     initializeSafetyCar();
                     trackView.updateCars(cars.toArray(new Car[0]));
@@ -94,8 +114,9 @@ public class SimulationManager {
         }
     }
 
-
-
+    /**
+     * Inicializa o SafetyCar e o configura na pista.
+     */
     private void initializeSafetyCar() {
         try {
             if (safetyCar == null) {
@@ -106,7 +127,7 @@ public class SimulationManager {
                     }
                     vehicles.add(safetyCar);
                     cars.add(safetyCar);
-                    carStateRepository.saveCarState(safetyCar); // Garante que o Safety Car seja salvo no Firestore
+                    carStateRepository.saveCarState(safetyCar); // Salva o estado inicial do Safety Car
                     trackView.updateCars(cars.toArray(new Car[0]));
                     trackView.invalidate();
                 });
@@ -122,6 +143,9 @@ public class SimulationManager {
         }
     }
 
+    /**
+     * Inicia a corrida de cada veículo em sequência, com uma pausa entre eles.
+     */
     private void startVehiclesSequentially() {
         try {
             if (trackView.getTrackBitmap() != null) {
@@ -154,6 +178,9 @@ public class SimulationManager {
         }
     }
 
+    /**
+     * Monitora continuamente a pista para detectar colisões entre veículos.
+     */
     private void monitorCollisions() {
         try {
             new Thread(() -> {
@@ -174,6 +201,9 @@ public class SimulationManager {
         }
     }
 
+    /**
+     * Verifica colisões entre todos os carros na simulação.
+     */
     private void checkCollisions() {
         try {
             for (int i = 0; i < cars.size(); i++) {
@@ -194,18 +224,16 @@ public class SimulationManager {
         }
     }
 
+    /**
+     * Pausa a simulação e salva o estado atual de cada carro.
+     */
     public void pauseSimulation() {
         try {
             if (isRunning && !isFinished && !isPaused) {
                 isPaused = true;
                 for (Vehicle vehicle : vehicles) {
-                    try {
-                        vehicle.pauseRace();
-                    } catch (Exception e) {
-                        Log.e(TAG, "Erro ao pausar veículo " + vehicle, e);
-                    }
+                    vehicle.pauseRace();
                 }
-
                 for (Car car : cars) {
                     carStateRepository.saveCarState(car);
                 }
@@ -216,16 +244,15 @@ public class SimulationManager {
         }
     }
 
+    /**
+     * Retoma a simulação de onde parou.
+     */
     public void resumeSimulation() {
         try {
             if (isRunning && isPaused) {
                 isPaused = false;
                 for (Vehicle vehicle : vehicles) {
-                    try {
-                        vehicle.resumeRace();
-                    } catch (Exception e) {
-                        Log.e(TAG, "Erro ao retomar veículo " + vehicle, e);
-                    }
+                    vehicle.resumeRace();
                 }
                 Log.d(TAG, "Simulação retomada.");
             }
@@ -234,6 +261,9 @@ public class SimulationManager {
         }
     }
 
+    /**
+     * Finaliza a simulação e reinicia os parâmetros dos veículos.
+     */
     public void finishSimulation() {
         try {
             isRunning = false;
@@ -241,22 +271,18 @@ public class SimulationManager {
             isFinished = true;
 
             for (Vehicle vehicle : vehicles) {
-                try {
-                    vehicle.stopRace();
-                } catch (Exception e) {
-                    Log.e(TAG, "Erro ao finalizar veículo " + vehicle, e);
-                }
+                vehicle.stopRace();
             }
 
-            // Reinicia os parâmetros de cada carro
+            // Reinicia os parâmetros de cada carro para o estado inicial
             for (Car car : cars) {
                 car.setPosition(startX, startY);
-                car.setDirection(90); // Ajuste de direção padrão
+                car.setDirection(90);
                 car.resetFuel();
                 car.setDistance(0);
                 car.setPenalty(0);
                 car.setLapsCompleted(0);
-                carStateRepository.saveCarState(car); // Salva o estado reiniciado no Firestore
+                carStateRepository.saveCarState(car);
             }
 
             vehicles.clear();
@@ -270,7 +296,7 @@ public class SimulationManager {
                 safetyCar.setRunning(false);
                 safetyCar.resetFuel();
                 safetyCar.resetParameters();
-                carStateRepository.saveCarState(safetyCar); // Salva o estado reiniciado do Safety Car
+                carStateRepository.saveCarState(safetyCar);
             }
             Log.d(TAG, "Simulação finalizada e parâmetros reiniciados.");
         } catch (Exception e) {
@@ -278,6 +304,9 @@ public class SimulationManager {
         }
     }
 
+    /**
+     * Retorna a TrackView associada à simulação.
+     */
     public TrackView getTrackView() {
         try {
             return trackView;

@@ -16,15 +16,25 @@ import androidx.annotation.NonNull;
 
 import com.example.myapplication.models.Car;
 
+/**
+ * A classe TrackView é uma extensão de View responsável por renderizar a pista e os carros
+ * na tela do dispositivo, atualizando continuamente durante a simulação.
+ */
 @SuppressLint("ViewConstructor")
 public class TrackView extends View {
 
-    private Car[] cars;
-    private final Paint trackPaint = new Paint();
-    private Bitmap trackBitmap;
-    private long lastUpdateTime;
+    private Car[] cars;                           // Array de carros para desenhar na pista
+    private final Paint trackPaint = new Paint(); // Paint para desenhar a pista
+    private Bitmap trackBitmap;                   // Bitmap da imagem da pista
+    private long lastUpdateTime;                  // Tempo da última atualização da tela
     private static final String TAG = "TrackView";
 
+    /**
+     * Construtor que inicializa o TrackView e carrega o bitmap da pista.
+     *
+     * @param context Contexto da aplicação
+     * @param cars    Array inicial de carros para desenhar na pista
+     */
     public TrackView(Context context, Car[] cars) {
         super(context);
         try {
@@ -36,8 +46,12 @@ public class TrackView extends View {
         }
     }
 
+    /**
+     * Carrega o bitmap da pista a partir dos recursos.
+     */
     private void initializeTrackBitmap() {
         try {
+            // Carrega a imagem da pista (verifique se R.drawable.track existe)
             trackBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.track);
             if (trackBitmap == null) {
                 Log.e(TAG, "Erro ao carregar o bitmap da pista. Verifique o recurso R.drawable.track.");
@@ -47,6 +61,9 @@ public class TrackView extends View {
         }
     }
 
+    /**
+     * Método chamado para desenhar a pista e os carros na tela.
+     */
     @Override
     protected void onDraw(@NonNull Canvas canvas) {
         try {
@@ -55,18 +72,23 @@ public class TrackView extends View {
                 Log.e(TAG, "trackBitmap não foi carregado corretamente.");
                 return;
             }
-            drawTrack(canvas);
-            drawCars(canvas);
+            drawTrack(canvas);  // Desenha o fundo da pista
+            drawCars(canvas);   // Desenha os carros na pista
 
-            // Evita atualizações se a simulação estiver pausada ou terminada
+            // Atualiza a tela continuamente enquanto a simulação está em execução
             if (isRunning()) {
-                postInvalidateOnAnimation();  // Atualiza a tela de acordo com a taxa de quadros
+                postInvalidateOnAnimation();  // Solicita uma nova atualização de tela na próxima taxa de quadros
             }
         } catch (Exception e) {
             Log.e(TAG, "Erro ao desenhar a tela", e);
         }
     }
 
+    /**
+     * Desenha a imagem da pista no canvas.
+     *
+     * @param canvas Canvas no qual a pista será desenhada
+     */
     private void drawTrack(Canvas canvas) {
         try {
             if (trackBitmap != null) {
@@ -78,16 +100,22 @@ public class TrackView extends View {
         }
     }
 
+    /**
+     * Desenha todos os carros na tela e atualiza suas posições com base no tempo decorrido.
+     *
+     * @param canvas Canvas no qual os carros serão desenhados
+     */
     private void drawCars(Canvas canvas) {
         try {
             long currentTime = System.currentTimeMillis();
-            double deltaTime = (currentTime - lastUpdateTime) / 1000.0; // Calcula o deltaTime em segundos
+            double deltaTime = (currentTime - lastUpdateTime) / 1000.0; // Calcula deltaTime em segundos
             lastUpdateTime = currentTime;
 
+            // Move e desenha cada carro individualmente
             for (Car car : cars) {
                 try {
-                    car.move(deltaTime);  // Passa deltaTime para o método de movimentação
-                    car.draw(canvas);
+                    car.move(deltaTime);  // Passa deltaTime para o método de movimentação do carro
+                    car.draw(canvas);     // Desenha o carro no canvas
                 } catch (Exception e) {
                     Log.e(TAG, "Erro ao atualizar ou desenhar carro " + car.getName(), e);
                 }
@@ -97,18 +125,28 @@ public class TrackView extends View {
         }
     }
 
+    /**
+     * Atualiza a lista de carros para ser desenhada na tela.
+     *
+     * @param newCars Array atualizado de carros
+     */
     public void updateCars(Car[] newCars) {
         try {
-            // Atualiza apenas se houver uma mudança real na lista de carros
+            // Atualiza apenas se a lista de carros foi realmente alterada
             if (newCars != null && (cars == null || newCars.length != cars.length)) {
                 this.cars = newCars;
-                invalidate();
+                invalidate(); // Solicita que a tela seja redesenhada
             }
         } catch (Exception e) {
             Log.e(TAG, "Erro ao atualizar a lista de carros", e);
         }
     }
 
+    /**
+     * Retorna o bitmap atual da pista.
+     *
+     * @return Bitmap da pista
+     */
     public Bitmap getTrackBitmap() {
         try {
             return trackBitmap;
@@ -118,9 +156,13 @@ public class TrackView extends View {
         }
     }
 
-    // Método auxiliar para verificar o estado da simulação
+    /**
+     * Verifica se a simulação está em execução.
+     *
+     * @return true se a simulação estiver em execução; caso contrário, false.
+     * (Esta função deve ser implementada com a lógica adequada)
+     */
     private boolean isRunning() {
-        // Implemente essa função com a lógica para determinar se a simulação está em execução.
-        return true; // Mude conforme necessário
+        return true; // Alterar conforme necessário para retornar o estado real da simulação
     }
 }

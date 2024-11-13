@@ -6,27 +6,37 @@ import android.graphics.Bitmap;
 import android.util.Log;
 import com.example.myapplication.interfaces.Vehicle;
 
+/**
+ * Classe que estende `Car` e representa o carro de segurança na pista.
+ * Possui prioridade de execução mais alta e é executado em uma thread separada.
+ * Funcionalidades:
+ *   - Utiliza prioridade máxima para garantir uma execução mais rápida.
+ *   - Inclui métodos específicos para pausar, retomar e redefinir ao estado inicial.
+ */
+
 public class SafetyCar extends Car implements Vehicle {
 
     private static final String TAG = "SafetyCar";
-    private Thread safetyCarThread;
-    private volatile boolean isSafetyCarRunning = false; // Variável para controlar a execução da thread
+    private Thread safetyCarThread; // Thread dedicada para o Safety Car
+    private volatile boolean isSafetyCarRunning = false; // Controle para execução da thread
 
     public SafetyCar(String name, float startX, float startY, int carColor) {
-        super(name, startX, startY, carColor, null); // null para otherCars pois SafetyCar não interage diretamente com outros
+        // Inicializa o SafetyCar, passando `null` para otherCars já que ele não interage diretamente com outros carros
+        super(name, startX, startY, carColor, null);
     }
 
     @Override
     public void startRace(Bitmap trackBitmap, int trackWidth, int trackHeight) {
         try {
+            // Chama o método startRace da classe `Car`
             super.startRace(trackBitmap, trackWidth, trackHeight);
 
-            // Inicializa e inicia a thread do Safety Car, se ainda não estiver ativa
+            // Inicia a thread do Safety Car, se ela não estiver ativa
             if (safetyCarThread == null || !safetyCarThread.isAlive()) {
-                isSafetyCarRunning = true; // Ativa a variável de controle
-                safetyCarThread = new Thread(this);
-                safetyCarThread.setPriority(Thread.MAX_PRIORITY); // Define a prioridade máxima para a thread
-                safetyCarThread.start();
+                isSafetyCarRunning = true; // Ativa a execução da thread
+                safetyCarThread = new Thread(this); // Cria nova thread para o Safety Car
+                safetyCarThread.setPriority(Thread.MAX_PRIORITY); // Define prioridade alta para a thread
+                safetyCarThread.start(); // Inicia a thread
             }
         } catch (Exception e) {
             Log.e(TAG, "Erro ao iniciar a corrida para o Safety Car", e);
@@ -37,33 +47,34 @@ public class SafetyCar extends Car implements Vehicle {
     public void run() {
         long lastUpdateTime = System.currentTimeMillis();
 
-        // Loop de execução para manter o Safety Car em movimento
+        // Loop para manter o Safety Car em movimento enquanto `isSafetyCarRunning` estiver true
         while (isSafetyCarRunning) {
             try {
-                if (isPaused()) {  // Usando o método isPaused() ao invés da variável direta
-                    Thread.sleep(100);
+                // Verifica se o Safety Car está pausado
+                if (isPaused()) {
+                    Thread.sleep(100); // Aguarda enquanto estiver pausado
                     continue;
                 }
 
                 long currentTime = System.currentTimeMillis();
-                double deltaTime = (currentTime - lastUpdateTime) / 1000.0;
+                double deltaTime = (currentTime - lastUpdateTime) / 1000.0; // Calcula o delta de tempo em segundos
                 lastUpdateTime = currentTime;
 
-                // Movimentação constante do Safety Car
+                // Move o Safety Car constantemente
                 move(deltaTime);
 
-                // Log para simulação de comportamento (exemplo: luzes de alerta)
+                // Log de movimento para indicar funcionamento (ex.: luzes de alerta)
                 Log.d(TAG, getName() + " está em movimento como Safety Car.");
 
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                Thread.currentThread().interrupt(); // Interrompe a thread se uma interrupção for detectada
                 Log.e(TAG, "Thread do Safety Car interrompida", e);
             } catch (Exception e) {
                 Log.e(TAG, "Erro no loop do Safety Car", e);
             }
 
             try {
-                Thread.sleep(50); // Controle de taxa de atualização
+                Thread.sleep(50); // Controle da taxa de atualização do movimento
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -72,32 +83,32 @@ public class SafetyCar extends Car implements Vehicle {
 
     @Override
     public void stopRace() {
-        super.stopRace();
-        isSafetyCarRunning = false; // Desativa a execução da thread
+        super.stopRace(); // Para o Safety Car chamando o método da classe `Car`
+        isSafetyCarRunning = false; // Define `isSafetyCarRunning` como false para interromper o loop de movimento
         if (safetyCarThread != null) {
-            safetyCarThread.interrupt();
+            safetyCarThread.interrupt(); // Interrompe a thread do Safety Car
             Log.d(TAG, getName() + " finalizou a corrida como Safety Car.");
         }
     }
 
     @Override
     public void pauseRace() {
-        super.pauseRace();
+        super.pauseRace(); // Pausa o Safety Car chamando o método da classe `Car`
         Log.d(TAG, getName() + " está pausado como Safety Car.");
     }
 
     @Override
     public void resumeRace() {
-        super.resumeRace();
+        super.resumeRace(); // Retoma a corrida chamando o método da classe `Car`
         Log.d(TAG, getName() + " retomou a corrida como Safety Car.");
     }
 
-    // Método para redefinir os parâmetros do Safety Car ao estado inicial
+    // Método para redefinir o estado inicial do Safety Car
     public void resetParameters() {
-        setSpeed(initialSpeed);  // Usa o método setSpeed para redefinir a velocidade inicial
-        setDirection(90);        // Redefine o ângulo para o padrão
-        resetAccumulatedMoveX();  // Zera o movimento acumulado em X usando o método público
-        resetAccumulatedMoveY();  // Zera o movimento acumulado em Y usando o método público
+        setSpeed(initialSpeed);  // Redefine a velocidade inicial usando o método setSpeed
+        setDirection(90);        // Redefine o ângulo da direção para o padrão (90 graus)
+        resetAccumulatedMoveX();  // Zera o movimento acumulado em X
+        resetAccumulatedMoveY();  // Zera o movimento acumulado em Y
         Log.d(TAG, "Parâmetros do Safety Car foram resetados.");
     }
 }
