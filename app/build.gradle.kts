@@ -33,14 +33,19 @@ android {
 }
 
 dependencies {
+    // Inclui a biblioteca local 'mylibrary2'
     implementation("com.example:mylibrary:1.0.0")
+    implementation(project(":mylibrary2"))
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+
+    // Firebase dependencies
     implementation("com.google.firebase:firebase-firestore")
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
 
+    // Test dependencies
     testImplementation(libs.junit)
     testImplementation("org.mockito:mockito-core:4.0.0")
     androidTestImplementation(libs.ext.junit)

@@ -1,5 +1,3 @@
-// Caminho do arquivo: com/example/myapplication/TrackView.java
-
 package com.example.myapplication;
 
 import android.annotation.SuppressLint;
@@ -15,10 +13,10 @@ import android.view.View;
 import androidx.annotation.NonNull;
 
 import com.example.myapplication.models.Car;
+import com.example.mylibrary2.utils.MetricsCollector;
 
 /**
- * A classe TrackView é uma extensão de View responsável por renderizar a pista e os carros
- * na tela do dispositivo, atualizando continuamente durante a simulação.
+ * A classe TrackView é responsável por renderizar a pista e os carros na tela.
  */
 @SuppressLint("ViewConstructor")
 public class TrackView extends View {
@@ -29,6 +27,8 @@ public class TrackView extends View {
     private long lastUpdateTime;                  // Tempo da última atualização da tela
     private static final String TAG = "TrackView";
 
+    private final MetricsCollector metricsCollector; // Coleta de métricas de desempenho
+
     /**
      * Construtor que inicializa o TrackView e carrega o bitmap da pista.
      *
@@ -37,13 +37,10 @@ public class TrackView extends View {
      */
     public TrackView(Context context, Car[] cars) {
         super(context);
-        try {
-            this.cars = cars;
-            initializeTrackBitmap();
-            lastUpdateTime = System.currentTimeMillis();
-        } catch (Exception e) {
-            Log.e(TAG, "Erro ao inicializar TrackView", e);
-        }
+        this.cars = cars;
+        this.metricsCollector = new MetricsCollector(context); // Passa o Context ao MetricsCollector
+        initializeTrackBitmap();
+        lastUpdateTime = System.currentTimeMillis();
     }
 
     /**
@@ -51,7 +48,6 @@ public class TrackView extends View {
      */
     private void initializeTrackBitmap() {
         try {
-            // Carrega a imagem da pista (verifique se R.drawable.track existe)
             trackBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.track);
             if (trackBitmap == null) {
                 Log.e(TAG, "Erro ao carregar o bitmap da pista. Verifique o recurso R.drawable.track.");
@@ -75,9 +71,8 @@ public class TrackView extends View {
             drawTrack(canvas);  // Desenha o fundo da pista
             drawCars(canvas);   // Desenha os carros na pista
 
-            // Atualiza a tela continuamente enquanto a simulação está em execução
             if (isRunning()) {
-                postInvalidateOnAnimation();  // Solicita uma nova atualização de tela na próxima taxa de quadros
+                postInvalidateOnAnimation();  // Atualiza a tela continuamente
             }
         } catch (Exception e) {
             Log.e(TAG, "Erro ao desenhar a tela", e);
@@ -101,21 +96,23 @@ public class TrackView extends View {
     }
 
     /**
-     * Desenha todos os carros na tela e atualiza suas posições com base no tempo decorrido.
+     * Desenha todos os carros na tela e atualiza suas posições.
      *
      * @param canvas Canvas no qual os carros serão desenhados
      */
     private void drawCars(Canvas canvas) {
         try {
             long currentTime = System.currentTimeMillis();
-            double deltaTime = (currentTime - lastUpdateTime) / 1000.0; // Calcula deltaTime em segundos
+            double deltaTime = (currentTime - lastUpdateTime) / 1000.0; // Delta time em segundos
             lastUpdateTime = currentTime;
 
-            // Move e desenha cada carro individualmente
             for (Car car : cars) {
                 try {
-                    car.move(deltaTime);  // Passa deltaTime para o método de movimentação do carro
-                    car.draw(canvas);     // Desenha o carro no canvas
+                    car.move(deltaTime);  // Atualiza a posição do carro
+                    car.draw(canvas);     // Desenha o carro
+
+                    // Coleta métricas para cada carro
+                    collectCarMetrics(car, deltaTime);
                 } catch (Exception e) {
                     Log.e(TAG, "Erro ao atualizar ou desenhar carro " + car.getName(), e);
                 }
@@ -126,17 +123,32 @@ public class TrackView extends View {
     }
 
     /**
+     * Coleta métricas de desempenho para o carro atual.
+     *
+     * @param car       Carro para o qual as métricas serão coletadas.
+     * @param deltaTime Tempo decorrido desde a última atualização.
+     */
+    private void collectCarMetrics(Car car, double deltaTime) {
+        try {
+            long jitter = (long) (Math.random() * 50); // Simula jitter
+            long responseTime = (long) (deltaTime * 1000); // Delta time em ms
+            double utilization = Math.random() * 100; // Simula utilização
+
+            metricsCollector.collectMetric(car.getName(), jitter, responseTime, utilization);
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao coletar métricas para o carro " + car.getName(), e);
+        }
+    }
+
+    /**
      * Atualiza a lista de carros para ser desenhada na tela.
      *
-     * @param newCars Array atualizado de carros
+     * @param newCars Novo array de carros
      */
     public void updateCars(Car[] newCars) {
         try {
-            // Atualiza apenas se a lista de carros foi realmente alterada
-            if (newCars != null && (cars == null || newCars.length != cars.length)) {
-                this.cars = newCars;
-                invalidate(); // Solicita que a tela seja redesenhada
-            }
+            this.cars = newCars;
+            invalidate();
         } catch (Exception e) {
             Log.e(TAG, "Erro ao atualizar a lista de carros", e);
         }
@@ -148,21 +160,29 @@ public class TrackView extends View {
      * @return Bitmap da pista
      */
     public Bitmap getTrackBitmap() {
-        try {
-            return trackBitmap;
-        } catch (Exception e) {
-            Log.e(TAG, "Erro ao obter o bitmap da pista", e);
-            return null;
-        }
+        return trackBitmap;
     }
 
     /**
      * Verifica se a simulação está em execução.
      *
      * @return true se a simulação estiver em execução; caso contrário, false.
-     * (Esta função deve ser implementada com a lógica adequada)
      */
     private boolean isRunning() {
-        return true; // Alterar conforme necessário para retornar o estado real da simulação
+        return true; // Retorne o estado real da simulação conforme necessário
+    }
+
+    /**
+     * Exporta métricas coletadas para um arquivo CSV.
+     *
+     * @param filePath Caminho do arquivo CSV.
+     */
+    public void exportMetrics(String filePath) {
+        try {
+            metricsCollector.exportMetrics(filePath);
+            Log.d(TAG, "Métricas exportadas para " + filePath);
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao exportar métricas", e);
+        }
     }
 }

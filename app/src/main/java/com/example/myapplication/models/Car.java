@@ -11,11 +11,14 @@ import android.util.Log;
 import com.example.myapplication.interfaces.Vehicle;
 import com.example.mylibrary.utils.CalculationUtils;
 import com.example.mylibrary.utils.CarState;
-
+import com.example.mylibrary2.utils.MetricsCollector; // Importação para coleta de métricas
+import com.example.mylibrary2.utils.RealTimeScheduler; // Importação para escalonamento de tarefas
+import com.example.myapplication.Metrics;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Semaphore;
+
 /**
  * ### 3.2. Car
  * - **Descrição**: Implementa a interface `Vehicle` e representa um carro com propriedades e
@@ -26,6 +29,7 @@ import java.util.concurrent.Semaphore;
  *   - Movimenta-se ponto a ponto e atualiza a variável `distance`.
  *   - Controla colisões e incrementa a penalidade (`penalty`) em colisões.
  *   - Usa um semáforo para gerenciar regiões críticas na pista.
+ *   - Coleta métricas de desempenho e integra-se a um escalonador de tarefas.
  */
 
 public class Car implements Vehicle, Runnable, CarState {
@@ -63,15 +67,15 @@ public class Car implements Vehicle, Runnable, CarState {
     private static final float CRITICAL_REGION_Y_START = 467;
     private static final float CRITICAL_REGION_Y_END = 493;
 
+    protected final MetricsCollector metricsCollector;
 
-    public Car(String name, float startX, float startY, int carColor, List<Car> otherCars) {
+    public Car(String name, float startX, float startY, int carColor, List<Car> otherCars, MetricsCollector metricsCollector) {
         this.name = name;
         this.x = startX;
         this.y = startY;
         this.startX = startX;
         this.startY = startY;
         this.speed = initialSpeed;
-        this.direction = 90;
         this.carPaint = new Paint();
         this.carPaint.setColor(carColor);
         this.distance = 0;
@@ -80,6 +84,37 @@ public class Car implements Vehicle, Runnable, CarState {
         this.fuelTank = initialFuel;
         this.sensor = new HashMap<>();
         this.otherCars = otherCars;
+        this.metricsCollector = metricsCollector; // Assign passed MetricsCollector
+    }
+
+
+    @Override
+    public void resetParameters() {
+        // Redefine os valores iniciais para o carro
+        this.x = this.startX;
+        this.y = this.startY;
+        this.direction = 90; // Direção inicial (90 graus)
+        this.speed = this.initialSpeed; // Velocidade inicial
+        this.distance = 0; // Reinicia a distância
+        this.penalty = 0; // Remove penalidades
+        this.lapsCompleted = 0; // Zera as voltas completas
+        this.fuelTank = this.initialFuel; // Reabastece o tanque de combustível
+        this.accumulatedMoveX = 0; // Reinicia o movimento acumulado no eixo X
+        this.accumulatedMoveY = 0; // Reinicia o movimento acumulado no eixo Y
+        Log.d("Car", this.name + " resetou os parâmetros para os valores iniciais.");
+    }
+
+    @Override
+    public Metrics collectMetrics() {
+        // Calcula métricas como jitter, tempo de resposta e utilização
+        long jitter = System.currentTimeMillis() % 100; // Simulação de jitter
+        long responseTime = (long) (Math.random() * 500); // Simulação de tempo de resposta
+        double utilization = (speed / initialSpeed) * 100; // Exemplo de cálculo de utilização
+
+        Log.d("Car", "Métricas coletadas para " + name + ": Jitter=" + jitter +
+                "ms, Tempo de resposta=" + responseTime + "ms, Utilização=" + utilization + "%");
+
+        return new Metrics(jitter, responseTime, utilization);
     }
 
     // Implementação dos métodos de CarState
@@ -185,6 +220,11 @@ public class Car implements Vehicle, Runnable, CarState {
         isRunning = true;
         isPaused = false;
 
+        // Integrar com o RealTimeScheduler
+        RealTimeScheduler scheduler = new RealTimeScheduler();
+        long deadline = System.currentTimeMillis() + 5000; // Exemplo de deadline
+        scheduler.scheduleTask(getName(), deadline, Thread.NORM_PRIORITY, this::run);
+
         if (carThread == null || !carThread.isAlive()) {
             carThread = new Thread(this);
             carThread.start();
@@ -193,6 +233,14 @@ public class Car implements Vehicle, Runnable, CarState {
                 notifyAll();
             }
         }
+    }
+
+
+    private float adjustSpeed(float currentSpeed, boolean isDelayed) {
+        if (isDelayed) {
+            return currentSpeed + 10; // Aumenta velocidade em 10
+        }
+        return currentSpeed - 5; // Reduz velocidade em 5
     }
 
     @Override
@@ -209,6 +257,7 @@ public class Car implements Vehicle, Runnable, CarState {
 
                 long currentTime = System.currentTimeMillis();
                 double deltaTime = (currentTime - lastUpdateTime) / 1000.0;
+                long jitter = currentTime - lastUpdateTime;
                 lastUpdateTime = currentTime;
 
                 boolean inCriticalRegion = isInCriticalRegion(x, y);
@@ -225,6 +274,10 @@ public class Car implements Vehicle, Runnable, CarState {
                     Log.d(TAG, name + " está sem combustível. Parando o carro.");
                     stopRace();
                 }
+
+                // Collect metrics using the instance passed to the constructor
+                metricsCollector.collectMetric(getName(), jitter, (long) (deltaTime * 1000), (long) speed);
+
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             } catch (Exception e) {
@@ -236,10 +289,17 @@ public class Car implements Vehicle, Runnable, CarState {
             }
 
             try {
-                Thread.sleep(50);
+                Thread.sleep(50); // Controle de taxa de atualização
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+        }
+
+        // Export metrics at the end of the simulation
+        try {
+            metricsCollector.exportMetrics("car_metrics_" + getName() + ".csv");
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao exportar métricas", e);
         }
     }
 
@@ -296,6 +356,9 @@ public class Car implements Vehicle, Runnable, CarState {
         return maxDistance;
     }
 
+    /**
+     * Gerencia a velocidade e direção do carro, considerando possíveis carros à frente.
+     */
     private void manageSpeedAndDirection(double deltaTime) {
         Car carAhead = detectCarAhead();
 
