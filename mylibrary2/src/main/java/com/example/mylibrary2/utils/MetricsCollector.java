@@ -1,7 +1,12 @@
 package com.example.mylibrary2.utils;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.util.Log;
+
+import androidx.core.content.ContextCompat;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -66,13 +71,27 @@ public class MetricsCollector {
 
     /**
      * Exporta as métricas coletadas para um arquivo CSV.
-     * O arquivo será salvo no diretório de arquivos internos da aplicação.
+     * O arquivo será salvo no diretório externo do aplicativo, se permitido.
      *
-     * @param fileName Nome do arquivo de métricas.
+     * @param filePath Caminho completo para o arquivo de métricas.
      * @throws IOException Caso ocorra um erro ao gravar o arquivo.
      */
-    public void exportMetrics(String fileName) throws IOException {
-        File file = new File(context.getFilesDir(), fileName); // Salva no diretório interno
+    public void exportMetrics(String filePath) throws IOException {
+        if (!hasStoragePermission()) {
+            Log.e(TAG, "Permissões de armazenamento não concedidas. Não é possível exportar métricas.");
+            throw new IOException("Permissões de armazenamento não concedidas.");
+        }
+
+        File file = new File(filePath); // Garante que o caminho seja usado corretamente
+        Log.d(TAG, "Caminho do arquivo de métricas: " + file.getAbsolutePath());
+
+        // Cria o diretório pai, se necessário
+        File parentDir = file.getParentFile();
+        if (parentDir != null && !parentDir.exists() && !parentDir.mkdirs()) {
+            Log.e(TAG, "Erro ao criar diretório do arquivo: " + parentDir.getAbsolutePath());
+            throw new IOException("Erro ao criar diretório para " + filePath);
+        }
+
         try (FileWriter writer = new FileWriter(file)) {
             writer.write("Task Name,Jitter (ms),Response Time (ms),Processor Utilization (%)\n");
             for (Metric metric : metrics) {
@@ -80,9 +99,22 @@ public class MetricsCollector {
             }
             Log.d(TAG, "Métricas exportadas para: " + file.getAbsolutePath());
         } catch (IOException e) {
-            Log.e(TAG, "Erro ao salvar métricas", e);
+            Log.e(TAG, "Erro ao salvar métricas no arquivo: " + filePath, e);
             throw e;
         }
+    }
+
+    /**
+     * Verifica se as permissões de armazenamento estão concedidas.
+     *
+     * @return true se as permissões estão concedidas, false caso contrário.
+     */
+    private boolean hasStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            int writePermission = ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            return writePermission == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
     }
 
     /**

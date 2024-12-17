@@ -71,9 +71,7 @@ public class TrackView extends View {
             drawTrack(canvas);  // Desenha o fundo da pista
             drawCars(canvas);   // Desenha os carros na pista
 
-            if (isRunning()) {
-                postInvalidateOnAnimation();  // Atualiza a tela continuamente
-            }
+            postInvalidateOnAnimation();  // Atualiza a tela continuamente
         } catch (Exception e) {
             Log.e(TAG, "Erro ao desenhar a tela", e);
         }
@@ -86,10 +84,8 @@ public class TrackView extends View {
      */
     private void drawTrack(Canvas canvas) {
         try {
-            if (trackBitmap != null) {
-                Rect destRect = new Rect(0, 0, canvas.getWidth(), canvas.getHeight());
-                canvas.drawBitmap(trackBitmap, null, destRect, trackPaint);
-            }
+            Rect destRect = new Rect(0, 0, canvas.getWidth(), canvas.getHeight());
+            canvas.drawBitmap(trackBitmap, null, destRect, trackPaint);
         } catch (Exception e) {
             Log.e(TAG, "Erro ao desenhar a pista", e);
         }
@@ -107,14 +103,12 @@ public class TrackView extends View {
             lastUpdateTime = currentTime;
 
             for (Car car : cars) {
-                try {
+                if (car != null) {
                     car.move(deltaTime);  // Atualiza a posição do carro
                     car.draw(canvas);     // Desenha o carro
 
                     // Coleta métricas para cada carro
                     collectCarMetrics(car, deltaTime);
-                } catch (Exception e) {
-                    Log.e(TAG, "Erro ao atualizar ou desenhar carro " + car.getName(), e);
                 }
             }
         } catch (Exception e) {
@@ -161,15 +155,6 @@ public class TrackView extends View {
      */
     public Bitmap getTrackBitmap() {
         return trackBitmap;
-    }
-
-    /**
-     * Verifica se a simulação está em execução.
-     *
-     * @return true se a simulação estiver em execução; caso contrário, false.
-     */
-    private boolean isRunning() {
-        return true; // Retorne o estado real da simulação conforme necessário
     }
 
     /**

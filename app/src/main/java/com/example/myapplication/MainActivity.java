@@ -1,5 +1,8 @@
 package com.example.myapplication;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -7,8 +10,12 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Toast;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
+import com.example.myapplication.utils.MetricsFileManager;
 import com.example.mylibrary2.utils.MetricsCollector;
 import com.example.mylibrary2.utils.ThreadManager;
 
@@ -26,12 +33,19 @@ public class MainActivity extends AppCompatActivity {
     private Button startButton, pauseButton, finishButton;
     private LinearLayout trackContainer;
     private static final String TAG = "MainActivity";
+    private static final int STORAGE_PERMISSION_CODE = 100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         try {
             setContentView(R.layout.activity_main);
+
+            // Solicita permissões, se necessário
+            if (!checkAndRequestStoragePermissions()) {
+                Log.e(TAG, "Permissões não concedidas. Encerrando inicialização.");
+                return; // Interrompe a inicialização se permissões não forem concedidas
+            }
 
             // Inicializa os componentes de UI
             initializeUIComponents();
@@ -43,6 +57,25 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             handleInitializationError(e, "Erro ao iniciar a aplicação.");
         }
+    }
+
+    private boolean checkAndRequestStoragePermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                            != PackageManager.PERMISSION_GRANTED) {
+
+                ActivityCompat.requestPermissions(
+                        this,
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE},
+                        STORAGE_PERMISSION_CODE
+                );
+                return false; // Permissões ainda não concedidas
+            }
+        }
+        Log.d(TAG, "Permissões de armazenamento já concedidas.");
+        return true; // Permissões concedidas
     }
 
     private void initializeUIComponents() {
@@ -139,10 +172,15 @@ public class MainActivity extends AppCompatActivity {
             if (simulationManager != null) {
                 simulationManager.finishSimulation();
 
-                // Define o caminho do arquivo para exportação de métricas
-                File metricsFile = new File(getFilesDir(), "simulation_metrics.csv");
+                // Usa o MetricsFileManager para criar e verificar o arquivo
+                File metricsFile = MetricsFileManager.getOrCreateMetricsFile(this, "simulation_metrics.csv");
+                if (metricsFile == null || !metricsFile.exists()) {
+                    Log.e(TAG, "Falha ao criar ou acessar o arquivo de métricas.");
+                    Toast.makeText(this, "Erro ao exportar métricas.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
 
-                // Exporta métricas ao finalizar
+                // Exporta métricas para o arquivo criado
                 metricsCollector.exportMetrics(metricsFile.getAbsolutePath());
                 Log.d(TAG, "Simulação finalizada e métricas exportadas para " + metricsFile.getAbsolutePath());
             } else {
@@ -156,5 +194,19 @@ public class MainActivity extends AppCompatActivity {
     private void handleInitializationError(Exception e, String userMessage) {
         Log.e(TAG, userMessage + ": " + e.getMessage(), e);
         Toast.makeText(this, userMessage + ": " + e.getMessage(), Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == STORAGE_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "Permissões de armazenamento concedidas.");
+                recreate(); // Reinicia a atividade para continuar a inicialização
+            } else {
+                Log.e(TAG, "Permissões de armazenamento negadas.");
+                Toast.makeText(this, "Permissões de armazenamento são necessárias para exportar métricas.", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 }

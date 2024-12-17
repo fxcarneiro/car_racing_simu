@@ -1,8 +1,13 @@
 package com.example.myapplication;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.Build;
 import android.util.Log;
+
+import androidx.core.content.ContextCompat;
 
 import com.example.myapplication.interfaces.Vehicle;
 import com.example.myapplication.models.Car;
@@ -16,34 +21,25 @@ import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/**
- * SimulationManager class handles the management of a racing simulation, including vehicle creation,
- * state control (start, pause, resume, and finish), and collision monitoring.
- */
 public class SimulationManager {
 
-    private final CopyOnWriteArrayList<Vehicle> vehicles; // Thread-safe list for all vehicles
-    private final CopyOnWriteArrayList<Car> cars;         // Thread-safe list for cars only
-    private TrackView trackView;                         // View for rendering the track
-    private SafetyCar safetyCar;                         // Instance of the safety car
-    private boolean isRunning;                           // Indicates if the simulation is running
-    private boolean isPaused;                            // Indicates if the simulation is paused
-    private boolean isFinished;                          // Indicates if the simulation has finished
-    private final float startX = 75;                     // Initial X-coordinate for cars
-    private final float startY = 400;                    // Initial Y-coordinate for cars
-    private final int[] carColors = {Color.BLUE, Color.RED, Color.GREEN, Color.MAGENTA}; // Car colors
+    private final CopyOnWriteArrayList<Vehicle> vehicles;
+    private final CopyOnWriteArrayList<Car> cars;
+    private TrackView trackView;
+    private SafetyCar safetyCar;
+    private boolean isRunning;
+    private boolean isPaused;
+    private boolean isFinished;
+    private final float startX = 75;
+    private final float startY = 400;
+    private final int[] carColors = {Color.BLUE, Color.RED, Color.GREEN, Color.MAGENTA};
     private static final String TAG = "SimulationManager";
 
-    private final CarStateRepository carStateRepository = new CarStateRepository(); // Repository for car states
-    private final RealTimeScheduler scheduler;         // Task scheduler
-    private final MetricsCollector metricsCollector;   // Metrics collector
-    private final Context context;                     // Application context
+    private final CarStateRepository carStateRepository = new CarStateRepository();
+    private final RealTimeScheduler scheduler;
+    private final MetricsCollector metricsCollector;
+    private final Context context;
 
-    /**
-     * Constructor initializes the simulation and sets the initial state.
-     *
-     * @param context Application context for accessing resources and files.
-     */
     public SimulationManager(Context context) {
         this.context = context;
         this.vehicles = new CopyOnWriteArrayList<>();
@@ -56,96 +52,99 @@ public class SimulationManager {
         initializeSafetyCar();
     }
 
-    /**
-     * Resets the simulation state variables.
-     */
     private void resetSimulationState() {
         isPaused = false;
         isFinished = false;
         isRunning = false;
     }
 
-    /**
-     * Starts the simulation with the specified number of vehicles.
-     *
-     * @param vehicleCount Number of vehicles to simulate.
-     * @throws IOException If metrics cannot be exported.
-     */
     public void startSimulation(int vehicleCount) throws IOException {
         if (vehicleCount <= 0) {
-            Log.e(TAG, "Invalid number of vehicles: " + vehicleCount);
+            Log.e(TAG, "Número inválido de veículos: " + vehicleCount);
             return;
         }
 
         if (!isRunning) {
             resetSimulationState();
-            ThreadManager.configureProcessors(4); // Configure 4 cores for execution
+            ThreadManager.configureProcessors(4);
             loadCarStatesAndInitialize(vehicleCount);
 
-            // Execute scheduled tasks
+            // Atualiza o TrackView com os carros carregados
+            trackView.updateCars(cars.toArray(new Car[0]));
+
             scheduler.executeTasks();
 
-            // Ensure metrics file and directory exist
+            if (!hasStoragePermission()) {
+                Log.e(TAG, "Permissões de armazenamento não concedidas. Operação abortada.");
+                return;
+            }
+
             File exportFile = createMetricsFile("simulation_metrics.csv");
-            if (exportFile == null) {
-                Log.e(TAG, "Failed to create metrics file.");
+            if (exportFile == null || !exportFile.exists()) {
+                Log.e(TAG, "Erro ao criar ou acessar o arquivo de métricas.");
                 return;
             }
 
             metricsCollector.exportMetrics(exportFile.getAbsolutePath());
-            Log.d(TAG, "Metrics exported to: " + exportFile.getAbsolutePath());
+            Log.d(TAG, "Métricas exportadas para: " + exportFile.getAbsolutePath());
+            isRunning = true; // Marca a simulação como em execução
         }
     }
 
-    /**
-     * Creates a metrics file in the application's private storage.
-     *
-     * @param fileName Name of the file to create.
-     * @return The File object for the created file, or null if creation fails.
-     */
     private File createMetricsFile(String fileName) {
-        File file = new File(context.getFilesDir(), fileName);
-        File parentDir = file.getParentFile();
-        if (parentDir != null && !parentDir.exists()) {
-            if (!parentDir.mkdirs()) {
-                Log.e(TAG, "Failed to create directory: " + parentDir.getAbsolutePath());
-                return null;
-            }
-        }
-        try {
-            if (!file.exists() && !file.createNewFile()) {
-                Log.e(TAG, "Failed to create file: " + file.getAbsolutePath());
-                return null;
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Error creating file: " + file.getAbsolutePath(), e);
+        File dir = context.getExternalFilesDir(null); // Diretório externo privado
+        if (dir == null) {
+            Log.e(TAG, "Erro ao acessar o diretório externo.");
             return null;
         }
+
+        if (!dir.exists()) {
+            if (!dir.mkdirs()) {
+                Log.e(TAG, "Erro ao criar o diretório: " + dir.getAbsolutePath());
+                return null;
+            }
+        }
+
+        File file = new File(dir, fileName);
+        try {
+            if (!file.exists()) {
+                if (file.createNewFile()) {
+                    Log.d(TAG, "Arquivo criado com sucesso: " + file.getAbsolutePath());
+                } else {
+                    Log.e(TAG, "Falha ao criar o arquivo: " + file.getAbsolutePath());
+                }
+            } else {
+                Log.d(TAG, "Arquivo já existente: " + file.getAbsolutePath());
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Erro ao criar o arquivo: " + fileName, e);
+            return null;
+        }
+
         return file;
     }
 
-    /**
-     * Initializes car states and creates the specified number of vehicles.
-     *
-     * @param vehicleCount Number of vehicles to create.
-     */
+    private boolean hasStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            int writePermission = ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            int readPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE);
+            return writePermission == PackageManager.PERMISSION_GRANTED && readPermission == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
     private void loadCarStatesAndInitialize(int vehicleCount) {
         vehicles.clear();
         cars.clear();
 
-        MetricsCollector metricsCollector = new MetricsCollector(context); // Single instance
-
         for (int i = 0; i < vehicleCount; i++) {
             int carColor = carColors[i % carColors.length];
-            Car car = new Car("Car" + (i + 1), startX, startY, carColor, cars, metricsCollector); // Pass the instance
+            Car car = new Car("Car" + (i + 1), startX, startY, carColor, cars, metricsCollector);
             vehicles.add(car);
             cars.add(car);
         }
     }
 
-    /**
-     * Initializes the SafetyCar and sets its position on the track.
-     */
     private void initializeSafetyCar() {
         if (safetyCar == null) {
             safetyCar = new SafetyCar("SafetyCar", startX, startY, Color.BLACK, metricsCollector);
@@ -155,35 +154,26 @@ public class SimulationManager {
         safetyCar.setPosition(startX, startY);
     }
 
-    /**
-     * Pauses the simulation.
-     */
     public void pauseSimulation() {
         if (isRunning && !isFinished && !isPaused) {
             isPaused = true;
             for (Vehicle vehicle : vehicles) {
                 vehicle.pauseRace();
             }
-            Log.d(TAG, "Simulation paused.");
+            Log.d(TAG, "Simulação pausada.");
         }
     }
 
-    /**
-     * Resumes the simulation.
-     */
     public void resumeSimulation() {
         if (isRunning && isPaused) {
             isPaused = false;
             for (Vehicle vehicle : vehicles) {
                 vehicle.resumeRace();
             }
-            Log.d(TAG, "Simulation resumed.");
+            Log.d(TAG, "Simulação retomada.");
         }
     }
 
-    /**
-     * Stops the simulation and clears all vehicles.
-     */
     public void finishSimulation() {
         isRunning = false;
         isPaused = false;
@@ -194,7 +184,7 @@ public class SimulationManager {
         }
         vehicles.clear();
         cars.clear();
-        Log.d(TAG, "Simulation finished.");
+        Log.d(TAG, "Simulação finalizada.");
     }
 
     public boolean isPaused() {
