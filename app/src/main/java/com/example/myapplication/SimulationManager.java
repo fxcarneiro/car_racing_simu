@@ -58,6 +58,18 @@ public class SimulationManager {
         isRunning = false;
     }
 
+    public TrackView getTrackView() {
+        return trackView;
+    }
+
+    public boolean isPaused() {
+        return isPaused;
+    }
+
+    public boolean isRunning() {
+        return isRunning;
+    }
+
     public void startSimulation(int vehicleCount) throws IOException {
         if (vehicleCount <= 0) {
             Log.e(TAG, "Número inválido de veículos: " + vehicleCount);
@@ -69,93 +81,25 @@ public class SimulationManager {
             ThreadManager.configureProcessors(4);
             loadCarStatesAndInitialize(vehicleCount);
 
-            // Atualiza o TrackView com os carros carregados
             trackView.updateCars(cars.toArray(new Car[0]));
 
-            scheduler.executeTasks();
+            isRunning = true;
+            Log.d(TAG, "Simulação iniciada.");
 
-            if (!hasStoragePermission()) {
-                Log.e(TAG, "Permissões de armazenamento não concedidas. Operação abortada.");
-                return;
-            }
+            startDynamicPriorityAdjustment();
+            monitorSimulation();
+            triggerAperiodicEvents();
 
             File exportFile = createMetricsFile("simulation_metrics.csv");
-            if (exportFile == null || !exportFile.exists()) {
-                Log.e(TAG, "Erro ao criar ou acessar o arquivo de métricas.");
-                return;
-            }
-
-            metricsCollector.exportMetrics(exportFile.getAbsolutePath());
-            Log.d(TAG, "Métricas exportadas para: " + exportFile.getAbsolutePath());
-            isRunning = true; // Marca a simulação como em execução
-        }
-    }
-
-    private File createMetricsFile(String fileName) {
-        File dir = context.getExternalFilesDir(null); // Diretório externo privado
-        if (dir == null) {
-            Log.e(TAG, "Erro ao acessar o diretório externo.");
-            return null;
-        }
-
-        if (!dir.exists()) {
-            if (!dir.mkdirs()) {
-                Log.e(TAG, "Erro ao criar o diretório: " + dir.getAbsolutePath());
-                return null;
+            if (exportFile != null) {
+                metricsCollector.exportMetrics(exportFile.getAbsolutePath());
+                Log.d(TAG, "Métricas exportadas para: " + exportFile.getAbsolutePath());
             }
         }
-
-        File file = new File(dir, fileName);
-        try {
-            if (!file.exists()) {
-                if (file.createNewFile()) {
-                    Log.d(TAG, "Arquivo criado com sucesso: " + file.getAbsolutePath());
-                } else {
-                    Log.e(TAG, "Falha ao criar o arquivo: " + file.getAbsolutePath());
-                }
-            } else {
-                Log.d(TAG, "Arquivo já existente: " + file.getAbsolutePath());
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Erro ao criar o arquivo: " + fileName, e);
-            return null;
-        }
-
-        return file;
-    }
-
-    private boolean hasStoragePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            int writePermission = ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-            int readPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE);
-            return writePermission == PackageManager.PERMISSION_GRANTED && readPermission == PackageManager.PERMISSION_GRANTED;
-        }
-        return true;
-    }
-
-    private void loadCarStatesAndInitialize(int vehicleCount) {
-        vehicles.clear();
-        cars.clear();
-
-        for (int i = 0; i < vehicleCount; i++) {
-            int carColor = carColors[i % carColors.length];
-            Car car = new Car("Car" + (i + 1), startX, startY, carColor, cars, metricsCollector);
-            vehicles.add(car);
-            cars.add(car);
-        }
-    }
-
-    private void initializeSafetyCar() {
-        if (safetyCar == null) {
-            safetyCar = new SafetyCar("SafetyCar", startX, startY, Color.BLACK, metricsCollector);
-        }
-        vehicles.add(safetyCar);
-        cars.add(safetyCar);
-        safetyCar.setPosition(startX, startY);
     }
 
     public void pauseSimulation() {
-        if (isRunning && !isFinished && !isPaused) {
+        if (isRunning && !isPaused) {
             isPaused = true;
             for (Vehicle vehicle : vehicles) {
                 vehicle.pauseRace();
@@ -175,27 +119,141 @@ public class SimulationManager {
     }
 
     public void finishSimulation() {
-        isRunning = false;
-        isPaused = false;
-        isFinished = true;
+        if (isRunning) {
+            isRunning = false;
+            isPaused = false;
+            isFinished = true;
 
-        for (Vehicle vehicle : vehicles) {
-            vehicle.stopRace();
+            for (Vehicle vehicle : vehicles) {
+                vehicle.stopRace();
+            }
+
+            File exportFile = createMetricsFile("final_metrics.csv");
+            if (exportFile != null) {
+                try {
+                    metricsCollector.exportMetrics(exportFile.getAbsolutePath());
+                    Log.d(TAG, "Métricas finais exportadas.");
+                } catch (IOException e) {
+                    Log.e(TAG, "Erro ao exportar métricas finais.", e);
+                }
+            }
+
+            vehicles.clear();
+            cars.clear();
+            Log.d(TAG, "Simulação finalizada.");
         }
+    }
+
+    private void startDynamicPriorityAdjustment() {
+        new Thread(() -> {
+            while (isRunning) {
+                for (Car car : cars) {
+                    scheduler.adjustTaskPriority(car.getName(), calculatePriority(car));
+                }
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }).start();
+    }
+
+    private void triggerAperiodicEvents() {
+        new Thread(() -> {
+            while (isRunning) {
+                scheduler.scheduleTask("AperiodicEvent", System.currentTimeMillis() + 2000, 1, () -> {
+                    Log.d(TAG, "[T4 - Evento Aperiódico] Iniciado.");
+                    pauseVehiclesTemporarily();
+                    Log.d(TAG, "[T4 - Evento Aperiódico] Concluído.");
+                });
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }).start();
+    }
+
+    private void pauseVehiclesTemporarily() {
+        for (Vehicle vehicle : vehicles) {
+            vehicle.pauseRace();
+        }
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        for (Vehicle vehicle : vehicles) {
+            vehicle.resumeRace();
+        }
+    }
+
+    private int calculatePriority(Car car) {
+        long remainingTime = car.getDeadlineRemaining();
+        int distance = car.getDistance();
+
+        if (remainingTime < 3000) return Thread.MAX_PRIORITY;
+        if (distance > 500) return Thread.NORM_PRIORITY + 2;
+        return Thread.NORM_PRIORITY;
+    }
+
+    private void monitorSimulation() {
+        new Thread(() -> {
+            while (isRunning) {
+                for (Car car : cars) {
+                    long remainingTime = car.getDeadlineRemaining();
+                    Log.d(TAG, String.format("%s - Tempo restante: %d ms - Distância: %d",
+                            car.getName(), remainingTime, car.getDistance()));
+                }
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }).start();
+    }
+
+    private File createMetricsFile(String fileName) {
+        File dir = context.getExternalFilesDir(null);
+        if (dir == null || (!dir.exists() && !dir.mkdirs())) {
+            Log.e(TAG, "Erro ao acessar ou criar diretório.");
+            return null;
+        }
+
+        File file = new File(dir, fileName);
+        try {
+            if (!file.exists() && !file.createNewFile()) {
+                Log.e(TAG, "Falha ao criar o arquivo: " + file.getAbsolutePath());
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Erro ao criar o arquivo.", e);
+        }
+        return file;
+    }
+
+    private void loadCarStatesAndInitialize(int vehicleCount) {
         vehicles.clear();
         cars.clear();
-        Log.d(TAG, "Simulação finalizada.");
+
+        long currentTime = System.currentTimeMillis();
+        for (int i = 0; i < vehicleCount; i++) {
+            int carColor = carColors[i % carColors.length];
+            Car car = new Car("Car" + (i + 1), startX, startY, carColor, cars, metricsCollector);
+            car.setDeadline(currentTime + (i + 1) * 5000);
+            vehicles.add(car);
+            cars.add(car);
+        }
     }
 
-    public boolean isPaused() {
-        return isPaused;
-    }
-
-    public boolean isRunning() {
-        return isRunning;
-    }
-
-    public TrackView getTrackView() {
-        return trackView;
+    private void initializeSafetyCar() {
+        if (safetyCar == null) {
+            safetyCar = new SafetyCar("SafetyCar", startX, startY, Color.BLACK, metricsCollector);
+        }
+        vehicles.add(safetyCar);
+        cars.add(safetyCar);
+        safetyCar.setPosition(startX, startY);
     }
 }

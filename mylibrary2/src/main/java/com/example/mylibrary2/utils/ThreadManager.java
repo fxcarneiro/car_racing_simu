@@ -1,11 +1,17 @@
 package com.example.mylibrary2.utils;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 /**
  * Classe responsável por configurar os processadores e gerenciar o uso de recursos pelas threads.
  */
 public class ThreadManager {
 
     private static int configuredProcessors = Runtime.getRuntime().availableProcessors();
+    private static ExecutorService executorService;
 
     /**
      * Configura o número de processadores disponíveis para o sistema.
@@ -22,6 +28,12 @@ public class ThreadManager {
         }
 
         configuredProcessors = numCores;
+
+        if (executorService != null) {
+            executorService.shutdownNow(); // Reinicializa o pool
+        }
+        executorService = Executors.newFixedThreadPool(configuredProcessors);
+
         logMessage("Número de processadores configurados: " + configuredProcessors);
     }
 
@@ -38,8 +50,47 @@ public class ThreadManager {
      * Reseta a configuração de processadores para o máximo disponível no sistema.
      */
     public static void resetToMaxProcessors() {
-        configuredProcessors = Runtime.getRuntime().availableProcessors();
-        logMessage("Reset para número máximo de processadores disponíveis: " + configuredProcessors);
+        configureProcessors(Runtime.getRuntime().availableProcessors());
+        logMessage("Reset para número máximo de processadores disponíveis.");
+    }
+
+    /**
+     * Mede o tempo de execução de uma tarefa usando os processadores configurados.
+     *
+     * @param task        A tarefa a ser executada.
+     * @param description Descrição da configuração (para exportação).
+     * @param filePath    Caminho do arquivo CSV para exportar os resultados.
+     */
+    public static void measureExecutionTime(Runnable task, String description, String filePath) {
+        long startTime = System.nanoTime();
+
+        executorService.submit(task);
+        executorService.shutdown();
+        while (!executorService.isTerminated()) {
+            // Aguarda até que todas as threads finalizem
+        }
+
+        long endTime = System.nanoTime();
+        double executionTimeMs = (endTime - startTime) / 1_000_000.0;
+        logMessage("Tempo de execução (" + description + "): " + executionTimeMs + " ms");
+
+        exportToCSV(description, executionTimeMs, filePath);
+    }
+
+    /**
+     * Exporta o tempo de execução para um arquivo CSV.
+     *
+     * @param description      Descrição da configuração.
+     * @param executionTimeMs  Tempo de execução em milissegundos.
+     * @param filePath         Caminho do arquivo CSV.
+     */
+    private static void exportToCSV(String description, double executionTimeMs, String filePath) {
+        try (FileWriter writer = new FileWriter(filePath, true)) {
+            writer.write(description + "," + executionTimeMs + "\n");
+            logMessage("Resultados exportados para: " + filePath);
+        } catch (IOException e) {
+            logMessage("Erro ao exportar resultados: " + e.getMessage());
+        }
     }
 
     /**
@@ -52,40 +103,22 @@ public class ThreadManager {
     }
 
     /**
-     * Define a prioridade de uma thread para usar os processadores configurados.
-     *
-     * @param thread A thread que terá a prioridade ajustada.
-     * @param priority A prioridade da thread (valores de Process.THREAD_PRIORITY_*).
-     */
-    public static void setThreadPriority(Thread thread, int priority) {
-        thread.setPriority(priority);
-        logMessage("Prioridade da thread " + thread.getName() + " ajustada para " + priority);
-    }
-
-    /**
      * Método principal para demonstração de funcionalidades.
      */
     public static void main(String[] args) {
-        // Exibe o número máximo de processadores disponíveis
-        logMessage("Processadores disponíveis: " + Runtime.getRuntime().availableProcessors());
+        String csvPath = "performance_results.csv";
+        Runnable sampleTask = () -> {
+            for (int i = 0; i < 1_000_000; i++) {
+                Math.sqrt(i); // Simula uma carga de processamento
+            }
+        };
 
-        // Configura para usar apenas 2 núcleos
-        try {
-            configureProcessors(2);
-            logMessage("Processadores configurados: " + getConfiguredProcessors());
-        } catch (IllegalArgumentException e) {
-            logMessage("Erro ao configurar processadores: " + e.getMessage());
-        }
+        // Teste com 1 núcleo
+        configureProcessors(1);
+        measureExecutionTime(sampleTask, "1 Núcleo", csvPath);
 
-        // Reseta para o máximo disponível
+        // Teste com múltiplos núcleos
         resetToMaxProcessors();
-
-        // Ajusta a prioridade de uma thread de exemplo
-        Thread exampleThread = new Thread(() -> {
-            logMessage("Thread de exemplo executando.");
-        }, "ExampleThread");
-
-        exampleThread.start();
-        setThreadPriority(exampleThread, Thread.MAX_PRIORITY);
+        measureExecutionTime(sampleTask, "Máximo Núcleos", csvPath);
     }
 }

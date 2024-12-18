@@ -68,6 +68,7 @@ public class Car implements Vehicle, Runnable, CarState {
     private static final float CRITICAL_REGION_Y_END = 493;
 
     protected final MetricsCollector metricsCollector;
+    private long deadline; // Deadline do carro em milissegundos
 
     public Car(String name, float startX, float startY, int carColor, List<Car> otherCars, MetricsCollector metricsCollector) {
         this.name = name;
@@ -115,6 +116,16 @@ public class Car implements Vehicle, Runnable, CarState {
                 "ms, Tempo de resposta=" + responseTime + "ms, Utilização=" + utilization + "%");
 
         return new Metrics(jitter, responseTime, utilization);
+    }
+
+
+    public void setDeadline(long deadline) {
+        this.deadline = deadline;
+    }
+
+
+    public long getDeadlineRemaining() {
+        return Math.max(0, deadline - System.currentTimeMillis());
     }
 
     // Implementação dos métodos de CarState
@@ -420,38 +431,34 @@ public class Car implements Vehicle, Runnable, CarState {
     public void move(double deltaTime) {
         if (isPaused || fuelTank <= 0) return;
 
+        // Calcula o deslocamento direto baseado em direção, velocidade e deltaTime
         float moveX = (float) Math.cos(Math.toRadians(direction)) * (float) deltaTime * speed;
         float moveY = (float) Math.sin(Math.toRadians(direction)) * (float) deltaTime * speed;
 
-        accumulatedMoveX += moveX;
-        accumulatedMoveY += moveY;
+        // Verifica se a nova posição está dentro da pista antes de atualizar
+        float targetX = x + moveX;
+        float targetY = y + moveY;
 
-        if (Math.abs(accumulatedMoveX) >= 1.0) {
-            float targetX = x + Math.signum(accumulatedMoveX);
-            if (isOnTrack(targetX, y)) {
-                x = targetX;
-                distance++;
-                consumeFuel();
-                accumulatedMoveX -= Math.signum(accumulatedMoveX);
-            } else {
-                penalty++;
-                adjustDirection();
-                accumulatedMoveX = 0;
-            }
+        boolean canMoveX = isOnTrack(targetX, y);
+        boolean canMoveY = isOnTrack(x, targetY);
+
+        // Atualiza a posição X e Y, se permitido
+        if (canMoveX) {
+            x = targetX;
+            distance += Math.abs(moveX);
+            consumeFuel();
+        } else {
+            penalty++;
+            adjustDirection();
         }
 
-        if (Math.abs(accumulatedMoveY) >= 1.0) {
-            float targetY = y + Math.signum(accumulatedMoveY);
-            if (isOnTrack(x, targetY)) {
-                y = targetY;
-                distance++;
-                consumeFuel();
-                accumulatedMoveY -= Math.signum(accumulatedMoveY);
-            } else {
-                penalty++;
-                adjustDirection();
-                accumulatedMoveY = 0;
-            }
+        if (canMoveY) {
+            y = targetY;
+            distance += Math.abs(moveY);
+            consumeFuel();
+        } else {
+            penalty++;
+            adjustDirection();
         }
     }
 
